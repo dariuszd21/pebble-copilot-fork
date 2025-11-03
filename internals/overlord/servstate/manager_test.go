@@ -2591,7 +2591,7 @@ func (s *S) TestLogCleanupDuringPrune(c *C) {
 	iterators, err = s.manager.ServiceLogs([]string{"test1", "test2", "test3"}, -1)
 	c.Assert(err, IsNil)
 	c.Assert(len(iterators), Equals, 3)
-	
+
 	// Check that we can read from iterators
 	for name, iter := range iterators {
 		c.Assert(iter.Next(nil), Equals, true, Commentf("Service %s should have logs", name))
@@ -2618,4 +2618,3 @@ func (s *S) TestLogCleanupDuringPrune(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(iterators), Equals, 0, Commentf("Should have no log iterators after pruning"))
 }
-
