@@ -385,6 +385,7 @@ func (m *ServiceManager) Prune(pruneWait time.Duration, maxServiceData int) {
 	pruneLimit := now.Add(-pruneWait)
 	for name, s := range m.services {
 		if stateToStatus(s.state) == StatusInactive && s.currentSince.Before(pruneLimit) {
+			s.cleanupLogs()
 			delete(m.services, name)
 		}
 	}
@@ -401,6 +402,7 @@ func (m *ServiceManager) Prune(pruneWait time.Duration, maxServiceData int) {
 		})
 		excess := max(len(inactive)-maxServiceData, 0)
 		for i := range excess {
+			inactive[i].cleanupLogs()
 			delete(m.services, inactive[i].config.Name)
 		}
 	}
