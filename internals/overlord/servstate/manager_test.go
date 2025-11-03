@@ -2598,7 +2598,8 @@ func (s *S) TestLogCleanupDuringPrune(c *C) {
 		iter.Close()
 	}
 
-	// Mock time to make services old enough to prune
+	// Mock time so that all inactive services' serviceData will be pruned.
+	// Use year 9999 to ensure services are older than any reasonable pruneWait duration.
 	testBaseTime := getTestTime(9999, 1, 1)
 	restoreTime := servstate.FakeTimeNow(testBaseTime)
 	defer restoreTime()
