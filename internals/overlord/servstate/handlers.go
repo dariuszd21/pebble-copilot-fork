@@ -112,6 +112,15 @@ type serviceData struct {
 	startCount   atomic.Int64
 }
 
+// cleanupLogs closes and cleans up the service's log buffer to prevent
+// resource leaks and ensure proper shutdown.
+func (s *serviceData) cleanupLogs() {
+	if s.logs != nil {
+		s.logs.Close()
+		s.logs = nil
+	}
+}
+
 func (m *ServiceManager) doStart(task *state.Task, tomb *tomb.Tomb) error {
 	// Don't restart services that were left in DoingStatus when the daemon terminated.
 	m.state.Lock()

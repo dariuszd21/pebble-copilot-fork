@@ -2560,3 +2560,62 @@ func (s *S) TestPruneSortByCurrentSince(c *C) {
 		c.Assert(service.CurrentSince, Not(Equals), time.Time{})
 	}
 }
+
+// TestLogCleanupDuringPrune verifies that service log buffers are properly
+// closed when services are pruned from memory.
+func (s *S) TestLogCleanupDuringPrune(c *C) {
+	s.newServiceManager(c)
+	s.planAddLayer(c, pruneTestingLayer)
+	s.planChanged(c)
+
+	// Start and stop services to generate logs
+	chg := s.startServices(c, [][]string{{"test1", "test2", "test3"}})
+	s.st.Lock()
+	c.Check(chg.Status(), Equals, state.DoneStatus, Commentf("Error: %v", chg.Err()))
+	s.st.Unlock()
+
+	// Get log iterators before stopping
+	iterators, err := s.manager.ServiceLogs([]string{"test1", "test2", "test3"}, -1)
+	c.Assert(err, IsNil)
+	c.Assert(len(iterators), Equals, 3)
+	for _, iter := range iterators {
+		iter.Close()
+	}
+
+	chg = s.stopServices(c, [][]string{{"test1", "test2", "test3"}})
+	s.st.Lock()
+	c.Check(chg.Status(), Equals, state.DoneStatus, Commentf("Error: %v", chg.Err()))
+	s.st.Unlock()
+
+	// Verify logs are still accessible after stop
+	iterators, err = s.manager.ServiceLogs([]string{"test1", "test2", "test3"}, -1)
+	c.Assert(err, IsNil)
+	c.Assert(len(iterators), Equals, 3)
+	
+	// Check that we can read from iterators
+	for name, iter := range iterators {
+		c.Assert(iter.Next(nil), Equals, true, Commentf("Service %s should have logs", name))
+		iter.Close()
+	}
+
+	// Mock time to make services old enough to prune
+	testBaseTime := getTestTime(9999, 1, 1)
+	restoreTime := servstate.FakeTimeNow(testBaseTime)
+	defer restoreTime()
+
+	// Prune the services
+	s.manager.Prune(7*24*time.Hour, 1000)
+
+	// After pruning, verify services are removed from memory
+	services, err := s.manager.Services([]string{"test1", "test2", "test3"})
+	c.Assert(err, IsNil)
+	for _, service := range services {
+		c.Assert(service.CurrentSince, Equals, time.Time{})
+	}
+
+	// Verify log iterators are empty after pruning (no serviceData means no logs)
+	iterators, err = s.manager.ServiceLogs([]string{"test1", "test2", "test3"}, -1)
+	c.Assert(err, IsNil)
+	c.Assert(len(iterators), Equals, 0, Commentf("Should have no log iterators after pruning"))
+}
+
