@@ -42,7 +42,12 @@ import (
 const (
 	connectTimeout   = 5 * time.Second
 	handshakeTimeout = 5 * time.Second
-	waitDelay        = time.Second
+	// waitDelay is how long to wait for a process to exit after SIGTERM before
+	// sending SIGKILL, and how long to wait for I/O pipes to close. Previously
+	// this was 1 second, but that caused noticeable shutdown delays even for
+	// well-behaved processes. 100ms provides protection against hanging while
+	// minimizing delays for clean exits. See: https://github.com/canonical/pebble/issues/XXX
+	waitDelay = 100 * time.Millisecond
 
 	wsControl = "control"
 	wsStdio   = "stdio"
